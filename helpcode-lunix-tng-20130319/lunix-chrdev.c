@@ -195,12 +195,15 @@ int lunix_chrdev_init(void)
 	dev_no = MKDEV(LUNIX_CHRDEV_MAJOR, 0);
 	/* ? */
 	/* register_chrdev_region? */
+	register_chrdev_region(60,16*3,"lunix");	
+
 	if (ret < 0) {
 		debug("failed to register region, ret = %d\n", ret);
 		goto out;
 	}	
 	/* ? */
 	/* cdev_add? */
+	cdev_add(&lunix_chrdev_cdev,dev_no,16*3);	
 	if (ret < 0) {
 		debug("failed to add character device\n");
 		goto out_with_chrdev_region;

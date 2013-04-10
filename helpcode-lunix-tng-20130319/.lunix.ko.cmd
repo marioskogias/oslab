@@ -1,1 +1,0 @@
-cmd_/home/user/host/lunix/helpcode-lunix-tng-20130319/lunix.ko := ld -r -m elf_x86_64 -T /usr/src/linux-headers-2.6.32-5-common/scripts/module-common.lds --build-id -o /home/user/host/lunix/helpcode-lunix-tng-20130319/lunix.ko /home/user/host/lunix/helpcode-lunix-tng-20130319/lunix.o /home/user/host/lunix/helpcode-lunix-tng-20130319/lunix.mod.o

@@ -193,9 +193,7 @@ int lunix_chrdev_init(void)
 	lunix_chrdev_cdev.owner = THIS_MODULE;
 	
 	dev_no = MKDEV(LUNIX_CHRDEV_MAJOR, 0);
-	/* ? */
-	/* register_chrdev_region? */
-	register_chrdev_region(60,16*3,"lunix");	
+	register_chrdev_region(LUNIX_CHRDEV_MAJOR,16*3,"lunix");	
 
 	if (ret < 0) {
 		debug("failed to register region, ret = %d\n", ret);

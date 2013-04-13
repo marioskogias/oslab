@@ -44,7 +44,6 @@ static int lunix_chrdev_state_needs_refresh(struct lunix_chrdev_state_struct *st
 	
 	WARN_ON ( !(sensor = state->sensor));
 	/* ? */
-
 	/* The following return is bogus, just for the stub to compile */
 	return 0; /* ? */
 }
@@ -58,7 +57,23 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 {
 	struct lunix_sensor_struct *sensor;
 	
-	debug("leaving\n");
+	debug("updating\n");
+	
+	sensor = state->sensor;
+
+	switch (state->type) {
+
+	case BATT:
+		break;
+	case TEMP:
+	//	state->buf_data[0] = lookup_temperature[sensor->msr_data[TEMP]->values[0]] ;
+		debug("the value I got is %ld", lookup_temperature[sensor->msr_data[TEMP]->values[0]]);
+		break;
+	case LIGHT:
+		break;
+
+
+	}
 
 	/*
 	 * Grab the raw data quickly, hold the
@@ -107,9 +122,9 @@ static int lunix_chrdev_open(struct inode *inode, struct file *filp)
 	/* Allocate a new Lunix character device private state structure */
 	/* ? */
 	struct lunix_chrdev_state_struct * state =  vmalloc(sizeof(struct lunix_chrdev_state_struct));
-	state->sensor = lunix_sensors+iminor(inode);
+	state->sensor = lunix_sensors+iminor(inode); // connect with a sensor
 	
-	switch (iminor(inode)%LUNIX_SENSOR_CNT) {
+	switch (iminor(inode)%LUNIX_SENSOR_CNT) { // set the type
 	
 	case 0:
 		state->type = BATT;
@@ -122,9 +137,11 @@ static int lunix_chrdev_open(struct inode *inode, struct file *filp)
 		break;
 
 	}
-	 
+	
+	state->buf_timestamp = 0; // set the timestamp for the first time
 	filp->private_data=state;
 	debug("the minor is %d\n", iminor(inode));
+	ret = 0;
 out:
 	debug("leaving, with ret = %d\n", ret);
 	return ret;
@@ -154,6 +171,7 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 
 	sensor = state->sensor;
 	WARN_ON(!sensor);
+
 
 	/* Lock? */
 	/*

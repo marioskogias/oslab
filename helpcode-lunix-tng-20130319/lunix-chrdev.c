@@ -106,14 +106,25 @@ static int lunix_chrdev_open(struct inode *inode, struct file *filp)
 	
 	/* Allocate a new Lunix character device private state structure */
 	/* ? */
-	struct lunix_sensor_struct * sensor =  vmalloc(sizeof(struct lunix_chrdev_state_struct));
-	sensor = lunix_sensors+iminor(inode);
-	filp->private_data=sensor;
+	struct lunix_chrdev_state_struct * state =  vmalloc(sizeof(struct lunix_chrdev_state_struct));
+	state->sensor = lunix_sensors+iminor(inode);
+	
+	switch (iminor(inode)%LUNIX_SENSOR_CNT) {
+	
+	case 0:
+		state->type = BATT;
+		break;	
+	case 1:
+		state->type = TEMP;
+		break;
+	case 2:
+		state->type = LIGHT;
+		break;
+
+	}
+	 
+	filp->private_data=state;
 	debug("the minor is %d\n", iminor(inode));
-	if (sensor == NULL)
-		debug("no sensor found");
-	else 
-		debug("found the sensor");	
 out:
 	debug("leaving, with ret = %d\n", ret);
 	return ret;

@@ -23,6 +23,7 @@
 #include <linux/mmzone.h>
 #include <linux/vmalloc.h>
 #include <linux/spinlock.h>
+#include <linux/vmalloc.h>
 
 #include "lunix.h"
 #include "lunix-chrdev.h"
@@ -105,6 +106,14 @@ static int lunix_chrdev_open(struct inode *inode, struct file *filp)
 	
 	/* Allocate a new Lunix character device private state structure */
 	/* ? */
+	struct lunix_sensor_struct * sensor =  vmalloc(sizeof(struct lunix_chrdev_state_struct));
+	sensor = lunix_sensors+iminor(inode);
+	filp->private_data=sensor;
+	debug("the minor is %d\n", iminor(inode));
+	if (sensor == NULL)
+		debug("no sensor found");
+	else 
+		debug("found the sensor");	
 out:
 	debug("leaving, with ret = %d\n", ret);
 	return ret;

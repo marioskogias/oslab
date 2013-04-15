@@ -4,7 +4,8 @@
  * Implementation of character devices
  * for Lunix:TNG
  *
- * < Your name here >
+ * Kogias Marios
+ * Manousis Antonis
  *
  */
 
@@ -41,7 +42,6 @@ struct cdev lunix_chrdev_cdev;
 static int lunix_chrdev_state_needs_refresh(struct lunix_chrdev_state_struct *state)
 {
 	struct lunix_sensor_struct *sensor;
-	
 	WARN_ON ( !(sensor = state->sensor));
 
 	/* ? */
@@ -71,14 +71,15 @@ static int lunix_chrdev_state_needs_refresh(struct lunix_chrdev_state_struct *st
 	sensor = state->sensor;
         lunix_chrdev_state_needs_refresh(state);       //pithanws refresh   
         
-        /*kleidwse simaforo*/
-        spin_lock(&sensor->lock);
+        
+        spin_lock(&sensor->lock);   /* Lock */
 	
-		debug("the value I got is %ld", lookup_temperature[sensor->msr_data[TEMP]->values[0]]);
-                value1 =  lookup_temperature[sensor->msr_data[TEMP]->values[0]] ;                           
+		debug("the value I got is %ld", lookup_temperature[sensor->msr_data[state->type]->values[0]]);
+   
+                value1 =  lookup_temperature[sensor->msr_data[state->type]->values[0]] ;                           
                  
-        /* 3ekleidwse simaforo*/
-        spin_unlock(&sensor->lock);
+    
+        spin_unlock(&sensor->lock); /* Unlock */
 
 
 	/*
@@ -119,7 +120,6 @@ static int lunix_chrdev_state_needs_refresh(struct lunix_chrdev_state_struct *st
 static int lunix_chrdev_open(struct inode *inode, struct file *filp)
 {
 	/* Declarations */
-	/* ? */
 	int ret;
 
 	debug("entering\n");
@@ -134,7 +134,7 @@ static int lunix_chrdev_open(struct inode *inode, struct file *filp)
 	
 	/* Allocate a new Lunix character device private state structure */
 	/* ? */
-	struct lunix_chrdev_state_struct * state;
+	struct lunix_chrdev_state_struct * state;  // Declaration
         state =  vmalloc(sizeof(struct lunix_chrdev_state_struct));
 	state->sensor = lunix_sensors+iminor(inode); // connect with a sensor
         sema_init(&state->lock,1);	
@@ -187,16 +187,17 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 	WARN_ON(!sensor);
 
 
-         up(&state->lock); 	/* Lock? */
+         up(&state->lock); 	/* Lock */
   
 	/*
 	 * If the cached character device state needs to be
 	 * updated by actual sensor data (i.e. we need to report
 	 * on a "fresh" measurement, do so
 	 */
+
 	if (*f_pos == 0) {
 		while (lunix_chrdev_state_update(state) == -EAGAIN) {
-			/* ? */
+			 wait_event_interruptible(sensor->wq,1); // De 8umamai an prepei na kli8ei ki o scheduler edw  
 			/* The process needs to sleep */
 			/* See LDD3, page 153 for a hint */
 		}
@@ -205,13 +206,15 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 	/* End of file */
 	/* ? */
 	
-	/* Determine the number of cached bytes to copy to userspace */
+	/* Determine the number of cached bytes to copy to userspace */  //8a vre8ei apo to update kai to sprintf
 	/* ? */
 
 	/* Auto-rewind on EOF mode? */
 	/* ? */
+        down(&state->lock);
+    
 out:
-	down(&state->lock);     /* Unlock? */
+	down(&state->lock);     /* Unlock */    // prepei na upar3ei sigoura ki ena unlock parapanw e3w apo to out.
 	return ret;
 }
 
@@ -237,12 +240,14 @@ int lunix_chrdev_init(void)
 	 * a range of minor numbers (number of sensors * 8 measurements / sensor)
 	 * beginning with LINUX_CHRDEV_MAJOR:0
 	 */
+
 	int ret;
 	dev_t dev_no;
 	unsigned int lunix_minor_cnt = lunix_sensor_cnt << 3;
 	
 	debug("initializing character device\n");
-	cdev_init(&lunix_chrdev_cdev, &lunix_chrdev_fops);
+
+	cdev_init(&lunix_chrdev_cdev, &lunix_chrdev_fops);   /* cdev_init */
 	lunix_chrdev_cdev.owner = THIS_MODULE;
 	
 	dev_no = MKDEV(LUNIX_CHRDEV_MAJOR, 0);
@@ -252,9 +257,8 @@ int lunix_chrdev_init(void)
 		debug("failed to register region, ret = %d\n", ret);
 		goto out;
 	}	
-	/* ? */
-	/* cdev_add? */
-	cdev_add(&lunix_chrdev_cdev,dev_no,16*3);	
+
+	cdev_add(&lunix_chrdev_cdev,dev_no,16*3);  /* cdev_add */	
 	if (ret < 0) {
 		debug("failed to add character device\n");
 		goto out_with_chrdev_region;

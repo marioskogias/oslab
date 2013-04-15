@@ -43,16 +43,10 @@ static int lunix_chrdev_state_needs_refresh(struct lunix_chrdev_state_struct *st
 	struct lunix_sensor_struct *sensor;
 	
 	WARN_ON ( !(sensor = state->sensor));
-
-	/* ? */
-        if (state->buf_timestamp < sensor->msr_data[state->type]->last_update) {
-                debug("Probably refresh works");
-		return 1; }
-	else {  debug("Probably refresh works returns 0");
-		return 0;
-         }
-	/* The following return is bogus, just for the stub to compile */
-        /* ? */
+	if (state->buf_timestamp < sensor->msr_data[state->type]->last_update)
+		return 1;
+	else 
+		return 0; 
 }
 
 /*
@@ -60,52 +54,46 @@ static int lunix_chrdev_state_needs_refresh(struct lunix_chrdev_state_struct *st
  * based on sensor data. Must be called with the
  * character device state lock held.
  */
-	static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
+static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 {
 	struct lunix_sensor_struct *sensor;
-        
-        uint32_t value1;
-        int dec, aker;
-
-	debug("updating\n");
-	sensor = state->sensor;
-        lunix_chrdev_state_needs_refresh(state);       //pithanws refresh   
-        
-        /*kleidwse simaforo*/
-        spin_lock(&sensor->lock);
 	
-		debug("the value I got is %ld", lookup_temperature[sensor->msr_data[TEMP]->values[0]]);
-                value1 =  lookup_temperature[sensor->msr_data[TEMP]->values[0]] ;                           
-                 
-        /* 3ekleidwse simaforo*/
-        spin_unlock(&sensor->lock);
+	debug("updating\n");
+	
+	sensor = state->sensor;
 
+	switch (state->type) {
+
+	case BATT:
+		break;
+	case TEMP:
+	//	state->buf_data[0] = lookup_temperature[sensor->msr_data[TEMP]->values[0]] ;
+		debug("the value I got is %ld", lookup_temperature[sensor->msr_data[TEMP]->values[0]]);
+		break;
+	case LIGHT:
+		break;
+
+
+	}
 
 	/*
 	 * Grab the raw data quickly, hold the
 	 * spinlock for as little as possible.
 	 */
-
-
 	/* ? */
 	/* Why use spinlocks? See LDD3, p. 119 */
-
 
 	/*
 	 * Any new data available?
 	 */
-
-	dec=value1%1000;
-        aker=value1/1000;
-        state->buf_lim=sprintf(state->buf_data,"%d.%d",aker,dec);
-        debug("DOULEPSE, %s\n",state->buf_data);
-        
+	/* ? */
 
 	/*
 	 * Now we can take our time to format them,
 	 * holding only the private state semaphore
 	 */
 
+	/* ? */
 
 	debug("leaving\n");
 	return 0;
@@ -134,10 +122,9 @@ static int lunix_chrdev_open(struct inode *inode, struct file *filp)
 	
 	/* Allocate a new Lunix character device private state structure */
 	/* ? */
-	struct lunix_chrdev_state_struct * state;
-        state =  vmalloc(sizeof(struct lunix_chrdev_state_struct));
+	struct lunix_chrdev_state_struct * state =  vmalloc(sizeof(struct lunix_chrdev_state_struct));
 	state->sensor = lunix_sensors+iminor(inode); // connect with a sensor
-        sema_init(&state->lock,1);	
+	
 	switch (iminor(inode)%LUNIX_SENSOR_CNT) { // set the type
 	
 	case 0:
@@ -187,8 +174,7 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 	WARN_ON(!sensor);
 
 
-         up(&state->lock); 	/* Lock? */
-  
+	/* Lock? */
 	/*
 	 * If the cached character device state needs to be
 	 * updated by actual sensor data (i.e. we need to report
@@ -211,7 +197,7 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 	/* Auto-rewind on EOF mode? */
 	/* ? */
 out:
-	down(&state->lock);     /* Unlock? */
+	/* Unlock? */
 	return ret;
 }
 
@@ -279,4 +265,3 @@ void lunix_chrdev_destroy(void)
 	unregister_chrdev_region(dev_no, lunix_minor_cnt);
 	debug("leaving\n");
 }
-

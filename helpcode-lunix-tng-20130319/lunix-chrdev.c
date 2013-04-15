@@ -57,45 +57,55 @@ static int lunix_chrdev_state_needs_refresh(struct lunix_chrdev_state_struct *st
 static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 {
 	struct lunix_sensor_struct *sensor;
-	
+
 	debug("updating\n");
-	
+
 	sensor = state->sensor;
+	
+	/*dictionaries for each measurement*/	
+	long ** dictionary[N_LUNIX_MSR];
+	dictionary[BATT] = lookup_voltage;
+	dictionary[TEMP] = lookup_temperature;
+	dictionary[LIGHT] = lookup_light;
 
-	switch (state->type) {
+	uint32_t value;
+	
 
-	case BATT:
-		break;
-	case TEMP:
-	//	state->buf_data[0] = lookup_temperature[sensor->msr_data[TEMP]->values[0]] ;
-		debug("the value I got is %ld", lookup_temperature[sensor->msr_data[TEMP]->values[0]]);
-		break;
-	case LIGHT:
-		break;
+	spin_lock(&sensor->lock);
+	/*start of critical segment*/
+	value = sensor->msr_data[state->type]->values[0];
+	
+	/*end of critical segment*/
+	spin_unlock(&sensor->lock);
+	
+	/*formation*/	
+	long long_value = dictionary[state->type][value];
+	
+	int ak = long_value / 1000;
+	int dec = long_value % 1000;
 
+	state->buf_lim=sprintf(state->buf_data,"%d.%d",ak,dec);
+        debug("DOULEPSE, %s\n",state->buf_data); 
+		/*
+		 * Grab the raw data quickly, hold the
+		 * spinlock for as little as possible.
+		 */
+		/* ? */
+		/* Why use spinlocks? See LDD3, p. 119 */
 
-	}
+		/*
+		 * Any new data available?
+		 */
+		/* ? */
 
-	/*
-	 * Grab the raw data quickly, hold the
-	 * spinlock for as little as possible.
-	 */
-	/* ? */
-	/* Why use spinlocks? See LDD3, p. 119 */
+		/*
+		 * Now we can take our time to format them,
+		 * holding only the private state semaphore
+		 */
 
-	/*
-	 * Any new data available?
-	 */
-	/* ? */
+		/* ? */
 
-	/*
-	 * Now we can take our time to format them,
-	 * holding only the private state semaphore
-	 */
-
-	/* ? */
-
-	debug("leaving\n");
+		debug("leaving\n");
 	return 0;
 }
 
@@ -181,12 +191,14 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 	 * on a "fresh" measurement, do so
 	 */
 	if (*f_pos == 0) {
-		while (lunix_chrdev_state_update(state) == -EAGAIN) {
+		while (lunix_chrdev_state_update(state) == -EAGAIN) { // EAGAIN = try again
 			/* ? */
 			/* The process needs to sleep */
 			/* See LDD3, page 153 for a hint */
 		}
 	}
+	debug("before copying");
+	copy_to_user(usrbuf,state->buf_data,state->buf_lim*sizeof(char));
 
 	/* End of file */
 	/* ? */

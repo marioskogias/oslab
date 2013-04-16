@@ -198,8 +198,12 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 		}
 	}
 	debug("before copying");
-	copy_to_user(usrbuf,state->buf_data,state->buf_lim*sizeof(char));
-
+	cnt = state->buf_lim*sizeof(unsigned char);
+	int r=copy_to_user(usrbuf,state->buf_data,cnt);
+	debug("i didn't copy %d bytes",r);
+	*f_pos += cnt;
+	
+	ret = cnt; //need to return how much I've read
 	/* End of file */
 	/* ? */
 	

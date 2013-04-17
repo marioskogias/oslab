@@ -70,7 +70,7 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 	sensor = state->sensor;
 	
 	/*dictionaries for each measurement*/	
-	long ** dictionary[N_LUNIX_MSR];
+	long * dictionary[N_LUNIX_MSR];
 	dictionary[BATT] = lookup_voltage;
 	dictionary[TEMP] = lookup_temperature;
 	dictionary[LIGHT] = lookup_light;
@@ -208,7 +208,8 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 			/* The process needs to sleep */
 			/* See LDD3, page 153 for a hint */
 			debug("in while\n");
-			wait_event_interruptible(sensor->wq,lunix_chrdev_state_needs_refresh(state));
+			if (wait_event_interruptible(sensor->wq,lunix_chrdev_state_needs_refresh(state)))
+            			return -ERESTARTSYS;
 		}
 	}
 	debug("before copying");

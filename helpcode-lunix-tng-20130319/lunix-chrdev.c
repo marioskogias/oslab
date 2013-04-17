@@ -169,7 +169,14 @@ out:
 
 static int lunix_chrdev_release(struct inode *inode, struct file *filp)
 {
-	/* ? */
+	
+	struct lunix_chrdev_state_struct *state;
+
+	state = filp->private_data;
+	if (state == NULL)
+		debug("in release null");
+	else debug("in release not NULL");
+	vfree(state);
 	return 0;
 }
 
@@ -217,7 +224,7 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 		cnt = (state->buf_lim-*f_pos)*sizeof(unsigned char);
 	
 	char * temp = state->buf_data;
-	int r=copy_to_user(usrbuf,temp+*f_pos,cnt);
+	copy_to_user(usrbuf,temp+*f_pos,cnt);
 	
 	if ((cnt/sizeof(unsigned char) + *f_pos) == state->buf_lim)
 		*f_pos = 0;

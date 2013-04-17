@@ -56,12 +56,17 @@ static int lunix_chrdev_state_needs_refresh(struct lunix_chrdev_state_struct *st
  */
 static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 {
+	/*check if update needed*/
+	if (!lunix_chrdev_state_needs_refresh(state))
+		return EAGAIN;
+
 	struct lunix_sensor_struct *sensor;
 
 	debug("updating\n");
 
 	sensor = state->sensor;
-	
+	/*check if update needed*/
+		
 	/*dictionaries for each measurement*/	
 	long ** dictionary[N_LUNIX_MSR];
 	dictionary[BATT] = lookup_voltage;
@@ -195,6 +200,7 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 			/* ? */
 			/* The process needs to sleep */
 			/* See LDD3, page 153 for a hint */
+			wait_event_interruptible(sensor->wq,lunix_chrdev_state_needs_refresh(state));
 		}
 	}
 	debug("before copying");

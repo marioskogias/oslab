@@ -91,7 +91,7 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 	int ak = long_value / 1000;
 	int dec = long_value % 1000;
 
-	state->buf_lim=sprintf(state->buf_data,"%d.%d",ak,dec);
+	state->buf_lim=sprintf(state->buf_data,"%d.%d\n",ak,dec);
         debug("DOULEPSE, %s\n",state->buf_data);
 	state->buf_timestamp = get_seconds();
 		/*
@@ -159,10 +159,6 @@ static int lunix_chrdev_open(struct inode *inode, struct file *filp)
 	
 	state->buf_timestamp = 0; // set the timestamp for the first time
 	filp->private_data=state;
-	if (state->sensor == NULL)
-		debug("no sensor found\n");
-	else debug("found the sensor\n");
-	debug("the minor is %d\n", iminor(inode));
 	ret = 0;
 out:
 	debug("leaving, with ret = %d\n", ret);
@@ -201,8 +197,7 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 	 * updated by actual sensor data (i.e. we need to report
 	 * on a "fresh" measurement, do so
 	 */
-	//if (*f_pos == 0) {
-	//	debug("in if\n");
+	if (*f_pos == 0) {
 		while (lunix_chrdev_state_update(state) == -EAGAIN) { // EAGAIN = try again
 			/* ? */
 			/* The process needs to sleep */
@@ -210,12 +205,16 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 			debug("in while\n");
 			wait_event_interruptible(sensor->wq,lunix_chrdev_state_needs_refresh(state));
 		}
-	//}
+	}
 	debug("before copying");
-	cnt = state->buf_lim*sizeof(unsigned char);
-	int r=copy_to_user(usrbuf,state->buf_data,cnt);
-	debug("i didn't copy %d bytes",r);
-	*f_pos += cnt;
+	if (cnt>(state->buf_lim*sizeof(unsigned char)))	
+		cnt = (state->buf_lim-*f_pos)*sizeof(unsigned char);
+	
+	char * temp = state->buf_data;
+	int r=copy_to_user(usrbuf,temp+*f_pos,cnt);
+	
+	if ((cnt/sizeof(unsigned char) + *f_pos) == state->buf_lim)
+		*f_pos = 0;
 	
 	ret = cnt; //need to return how much I've read
 	/* End of file */

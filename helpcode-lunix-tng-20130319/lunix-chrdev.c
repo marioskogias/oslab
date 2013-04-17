@@ -43,10 +43,14 @@ static int lunix_chrdev_state_needs_refresh(struct lunix_chrdev_state_struct *st
 	struct lunix_sensor_struct *sensor;
 	
 	WARN_ON ( !(sensor = state->sensor));
-	if (state->buf_timestamp < sensor->msr_data[state->type]->last_update)
+	if (state->buf_timestamp < sensor->msr_data[state->type]->last_update) {
+		debug("need to update");
 		return 1;
-	else 
-		return 0; 
+	}
+	else {
+		debug("no need to update");
+ 		return 0;
+	} 
 }
 
 /*
@@ -56,10 +60,9 @@ static int lunix_chrdev_state_needs_refresh(struct lunix_chrdev_state_struct *st
  */
 static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 {
-	/*check if update needed*/
 	if (!lunix_chrdev_state_needs_refresh(state))
-		return EAGAIN;
-
+		return  -EAGAIN;
+	
 	struct lunix_sensor_struct *sensor;
 
 	debug("updating\n");
@@ -68,7 +71,7 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 	/*check if update needed*/
 		
 	/*dictionaries for each measurement*/	
-	long ** dictionary[N_LUNIX_MSR];
+	long * dictionary[N_LUNIX_MSR];
 	dictionary[BATT] = lookup_voltage;
 	dictionary[TEMP] = lookup_temperature;
 	dictionary[LIGHT] = lookup_light;
@@ -82,15 +85,16 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 	
 	/*end of critical segment*/
 	spin_unlock(&sensor->lock);
-	
+	debug("before formation\n");
 	/*formation*/	
 	long long_value = dictionary[state->type][value];
 	
 	int ak = long_value / 1000;
 	int dec = long_value % 1000;
 
-	state->buf_lim=sprintf(state->buf_data,"%d.%d",ak,dec);
-        debug("DOULEPSE, %s\n",state->buf_data); 
+	state->buf_lim=sprintf(state->buf_data,"%d.%d\n",ak,dec);
+        debug("DOULEPSE, %s\n",state->buf_data);
+	state->buf_timestamp = get_seconds();
 		/*
 		 * Grab the raw data quickly, hold the
 		 * spinlock for as little as possible.
@@ -155,8 +159,8 @@ static int lunix_chrdev_open(struct inode *inode, struct file *filp)
 	}
 	
 	state->buf_timestamp = 0; // set the timestamp for the first time
+	sema_init(&state->lock,1); //initialize the semaphore
 	filp->private_data=state;
-	debug("the minor is %d\n", iminor(inode));
 	ret = 0;
 out:
 	debug("leaving, with ret = %d\n", ret);
@@ -195,17 +199,30 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 	 * updated by actual sensor data (i.e. we need to report
 	 * on a "fresh" measurement, do so
 	 */
+	/*lock the semaphore*/
+	if (down_interruptible(&state->lock))
+ 		return -ERESTARTSYS;
+	/*read now*/
 	if (*f_pos == 0) {
 		while (lunix_chrdev_state_update(state) == -EAGAIN) { // EAGAIN = try again
 			/* ? */
 			/* The process needs to sleep */
 			/* See LDD3, page 153 for a hint */
-			wait_event_interruptible(sensor->wq,lunix_chrdev_state_needs_refresh(state));
+			if (wait_event_interruptible(sensor->wq,lunix_chrdev_state_needs_refresh(state)))
+            			return -ERESTARTSYS;
 		}
 	}
 	debug("before copying");
-	copy_to_user(usrbuf,state->buf_data,state->buf_lim*sizeof(char));
-
+	if (cnt>(state->buf_lim*sizeof(unsigned char)))	
+		cnt = (state->buf_lim-*f_pos)*sizeof(unsigned char);
+	
+	char * temp = state->buf_data;
+	int r=copy_to_user(usrbuf,temp+*f_pos,cnt);
+	
+	if ((cnt/sizeof(unsigned char) + *f_pos) == state->buf_lim)
+		*f_pos = 0;
+	
+	ret = cnt; //need to return how much I've read
 	/* End of file */
 	/* ? */
 	
@@ -216,6 +233,9 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 	/* ? */
 out:
 	/* Unlock? */
+	debug("up the semaphore");
+	up(&state->lock);
+
 	return ret;
 }
 

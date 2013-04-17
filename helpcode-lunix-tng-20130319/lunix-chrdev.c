@@ -158,6 +158,7 @@ static int lunix_chrdev_open(struct inode *inode, struct file *filp)
 	}
 	
 	state->buf_timestamp = 0; // set the timestamp for the first time
+	sema_init(&state->lock,1); //initialize the semaphore
 	filp->private_data=state;
 	ret = 0;
 out:
@@ -197,6 +198,10 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 	 * updated by actual sensor data (i.e. we need to report
 	 * on a "fresh" measurement, do so
 	 */
+	/*lock the semaphore*/
+	if (down_interruptible(&state->lock))
+ 		return -ERESTARTSYS;
+	/*read now*/
 	if (*f_pos == 0) {
 		while (lunix_chrdev_state_update(state) == -EAGAIN) { // EAGAIN = try again
 			/* ? */
@@ -227,6 +232,9 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 	/* ? */
 out:
 	/* Unlock? */
+	debug("up the semaphore");
+	up(&state->lock);
+
 	return ret;
 }
 

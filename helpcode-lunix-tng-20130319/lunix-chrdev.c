@@ -222,14 +222,17 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 		}
 	}
 	debug("before copying");
-	if (cnt>(state->buf_lim*sizeof(unsigned char)))	
-		cnt = (state->buf_lim-*f_pos)*sizeof(unsigned char);
+	int char_no = *f_pos / sizeof(unsigned char);
+	if (cnt>(state->buf_lim-char_no)*sizeof(unsigned char))
+		cnt = (state->buf_lim - char_no)*sizeof(unsigned char);
 	
 	char * temp = state->buf_data;
-	copy_to_user(usrbuf,temp+*f_pos,cnt);
+	copy_to_user(usrbuf,temp+char_no,cnt);
 	
-	if ((cnt/sizeof(unsigned char) + *f_pos) == state->buf_lim)
+	*f_pos = *f_pos + cnt;	
+	if ((cnt/sizeof(unsigned char) + char_no) == state->buf_lim)
 		*f_pos = 0;
+
 	
 	ret = cnt; //need to return how much I've read
 	/* End of file */

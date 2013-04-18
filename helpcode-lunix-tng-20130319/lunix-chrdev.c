@@ -142,9 +142,11 @@ static int lunix_chrdev_open(struct inode *inode, struct file *filp)
 	/* Allocate a new Lunix character device private state structure */
 	/* ? */
 	struct lunix_chrdev_state_struct * state =  vmalloc(sizeof(struct lunix_chrdev_state_struct));
-	state->sensor = lunix_sensors+iminor(inode); // connect with a sensor
+	state->sensor = lunix_sensors+iminor(inode)/8; // connect with a sensor
 	
-	switch (iminor(inode)%LUNIX_SENSOR_CNT) { // set the type
+	debug("the sensor is %d\n",iminor(inode)/8);
+	debug("the mesurement is %d\n",iminor(inode)%8);	
+	switch (iminor(inode)%8) { // set the type
 	
 	case 0:
 		state->type = BATT;

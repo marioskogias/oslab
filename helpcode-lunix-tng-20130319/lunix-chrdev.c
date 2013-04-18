@@ -69,7 +69,8 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 
 	sensor = state->sensor;
 	/*check if update needed*/
-		
+	
+	unsigned long flags;		
 	/*dictionaries for each measurement*/	
 	long * dictionary[N_LUNIX_MSR];
 	dictionary[BATT] = lookup_voltage;
@@ -78,13 +79,14 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 
 	uint32_t value;
 	
-
-	spin_lock(&sensor->lock);
+	spin_lock_irqsave(&sensor->lock,flags);
+	//spin_lock(&sensor->lock);
 	/*start of critical segment*/
 	value = sensor->msr_data[state->type]->values[0];
 	
 	/*end of critical segment*/
-	spin_unlock(&sensor->lock);
+	//spin_unlock(&sensor->lock);
+	spin_unlock_irqrestore(&sensor->lock,flags);
 	debug("before formation\n");
 	/*formation*/	
 	long long_value = dictionary[state->type][value];
@@ -227,7 +229,10 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 		cnt = (state->buf_lim - char_no)*sizeof(unsigned char);
 	
 	char * temp = state->buf_data;
-	copy_to_user(usrbuf,temp+char_no,cnt);
+	if (copy_to_user(usrbuf,temp+char_no,cnt)) {
+		ret = -EFAULT;
+		goto out;
+	}
 	
 	*f_pos = *f_pos + cnt;	
 	if ((cnt/sizeof(unsigned char) + char_no) == state->buf_lim)

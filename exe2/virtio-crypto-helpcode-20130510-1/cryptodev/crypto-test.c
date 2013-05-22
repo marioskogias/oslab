@@ -20,9 +20,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#include <crypto/cryptodev.h>
+#include "crypto/cryptodev.h"
 
-#define DATA_SIZE       256
+#define DATA_SIZE       4
 #define BLOCK_SIZE      16
 #define KEY_SIZE	16  /* AES128 */
 

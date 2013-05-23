@@ -7,7 +7,6 @@ from multiprocessing import Process
 import signal
 import subprocess
 import time 
-import select
  
 def server():
         port = 50000
@@ -68,28 +67,26 @@ def client():
 
 
 def send(so):
-	text = raw_input()
-        text = text+"\0"
-        en_sock.send(text)
-        text = en_sock.recv(1024)
-        so.sendall(text)
+        while 1:
+                text = raw_input()
+                text = text+"\0"
+                en_sock.send(text)
+                text = en_sock.recv(1024)
+                so.sendall(text)
 
 def receive(so):
-	count = 0
-	data = so.recv(256)
-	count = sys.getsizeof(data)
-	while (count<256):        # prepei na diavasei 256
-		temp = so.recv(256)
-		count = count + sys.getsizeof(temp)
-		data = data + temp
-        if data:
-        	dec_sock.send(data)
-               	data = dec_sock.recv(1024)
-                out = "                                           "+data
-		print out
-        else:
-        	print "Peer went away"
-                os.abort()
+        while 1:
+
+                data = so.recv(1024)
+                if data:
+                        dec_sock.send(data)
+                        data = dec_sock.recv(1024)
+                       	out = "                                           "+data
+			print out
+                else:
+                        print "Peer went away"
+                        os.kill(os.getppid(),signal.SIGKILL)
+                        os.abort()
 
 if ((len(sys.argv) != 3) and  (len(sys.argv) != 2)):
         print "Usage: "+ sys.argv[0] + " <hostname> <port> to join a conversation"
@@ -115,10 +112,7 @@ print "I say",
 print "The remote says".rjust(50)
 print "---------------------------------------------------------"
 
-while True:
-	readable, writable, exceptional = select.select([sock,sys.stdin], [],[])
-	for s in readable:
-		if s is sock:
-                        receive(sock)
-                else:
-                        send(sock)
+p=Process(target=receive,args=(sock,))
+p.start()
+send(sock)
+

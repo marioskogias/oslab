@@ -53,7 +53,8 @@ long crypto_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	case CIOCGSESSION:
 		/* ? */
 		/*we need to add no data just start a session*/
-		
+		debug("in ciocgsession before send the data");	
+		send_buf(crdev,cr_data,sizeof(crypto_data),true);		
 			
 		if (!device_has_data(crdev)) {
 			debug("sleeping in CIOCGSESSION\n");

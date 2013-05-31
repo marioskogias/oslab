@@ -173,12 +173,18 @@ static void handle_control_message(VirtIOCrypto *crdev, void *buf, size_t len)
 			
 			/*open the crypto device*/
 			int fd;
-
+			printf("open the file\n");
 			fd = open("/dev/crypto", O_RDWR);
 			if (fd < 0) {
 				perror("open(/dev/crypto)");
-				return 1;
+				return ;
 			}
+			
+			printf("the value of the file descriptor is %d\n",fd);
+
+			/*send the file descriptor to the guest with controll message*/
+			send_control_event(crdev,VIRTIO_CRYPTO_DEVICE_HOST_OPEN,fd);	
+			
 
 		} 
 		else {

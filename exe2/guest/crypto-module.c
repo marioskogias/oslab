@@ -25,6 +25,8 @@ static void handle_control_message(struct crypto_device *crdev,
 	struct virtio_crypto_control *cpkt;
 
 	cpkt = (struct virtio_crypto_control *)(buf->buf + buf->offset);
+	
+	debug("the value of the file descriptor is %d",cpkt->value);
 
 	switch (cpkt->event) {
 	case VIRTIO_CRYPTO_DEVICE_HOST_OPEN:

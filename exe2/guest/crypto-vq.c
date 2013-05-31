@@ -153,7 +153,10 @@ ssize_t send_buf(struct crypto_device *crdev, void *in_buf, size_t in_count,
 	
 	/* add sg list to virtqueue and notify host */
 	/* ? */
-	
+/*	if (virtqueue_add_buf(out_vq, sg, 1, 0, in_buf) >= 0) 
+		virtqueue_kick(out_vq);
+	wait to check other things first
+*/
 	if (ret < 0) {
 		in_count = 0;
 		goto done;

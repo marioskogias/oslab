@@ -99,7 +99,7 @@ static int crypto_chrdev_open(struct inode *inode, struct file *filp)
 	 * We don't expect reply from Host yet. Just leave. 
 	 * Delete when Host replies back to us. 
 	 */
-	goto out;
+//	goto out;
 
 	/* Sleep here until we get the fd from the Host. */
 	if (!crypto_device_ready(crdev)) {

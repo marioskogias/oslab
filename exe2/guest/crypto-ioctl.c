@@ -52,7 +52,9 @@ long crypto_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	case CIOCGSESSION:
 		/* ? */
-
+		/*we need to add no data just start a session*/
+		
+			
 		if (!device_has_data(crdev)) {
 			debug("sleeping in CIOCGSESSION\n");
 			if (filp->f_flags & O_NONBLOCK)

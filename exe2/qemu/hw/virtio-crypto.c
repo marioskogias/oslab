@@ -168,8 +168,18 @@ static void handle_control_message(VirtIOCrypto *crdev, void *buf, size_t len)
 			printf("in open file\n");
 
 			/* Open crypto device file and send the appropriate
- 			 * message (event) to the guest */
+			 * message (event) to the guest */
 			/* ? */
+			
+			/*open the crypto device*/
+			int fd;
+
+			fd = open("/dev/crypto", O_RDWR);
+			if (fd < 0) {
+				perror("open(/dev/crypto)");
+				return 1;
+			}
+
 		} 
 		else {
 			printf("in close file\n");

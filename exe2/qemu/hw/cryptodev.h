@@ -14,6 +14,10 @@
 #define CRYPTO_HMAC_MAX_KEY_LEN		512
 #define CRYPTO_CIPHER_MAX_KEY_LEN	64
 
+/* virtio-crypto */
+#define CRYPTO_BLOCK_MAX_LEN            64
+#define CRYPTO_DATA_MAX_LEN             1024
+
 /* All the supported algorithms
  */
 enum cryptodev_crypto_op_t {
@@ -45,11 +49,9 @@ enum cryptodev_crypto_op_t {
 
 	CRYPTO_CAMELLIA_CBC = 101,
 	CRYPTO_RIPEMD160,
-	CRYPTO_SHA2_224,
 	CRYPTO_SHA2_256,
 	CRYPTO_SHA2_384,
 	CRYPTO_SHA2_512,
-	CRYPTO_SHA2_224_HMAC,
 	CRYPTO_ALGORITHM_ALL, /* Keep updated - see below */
 };
 

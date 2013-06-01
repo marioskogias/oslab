@@ -4,8 +4,12 @@
  * Implementation of character devices
  * for Lunix:TNG
  *
+<<<<<<< HEAD:helpcode-lunix-tng-20130319/lunix-chrdev.c
  * Kogias Marios
  * Manousis Antonis
+=======
+ * Marios Kogias
+>>>>>>> marios:exe1/helpcode-lunix-tng-20130319/lunix-chrdev.c
  *
  */
 
@@ -43,6 +47,7 @@ static int lunix_chrdev_state_needs_refresh(struct lunix_chrdev_state_struct *st
 {
 	struct lunix_sensor_struct *sensor;
 	WARN_ON ( !(sensor = state->sensor));
+<<<<<<< HEAD:helpcode-lunix-tng-20130319/lunix-chrdev.c
 
         if (state->buf_timestamp < sensor->msr_data[state->type]->last_update) {
                 debug("Probably refresh works");
@@ -52,6 +57,16 @@ static int lunix_chrdev_state_needs_refresh(struct lunix_chrdev_state_struct *st
          }
 
   
+=======
+	if (state->buf_timestamp < sensor->msr_data[state->type]->last_update) {
+		debug("need to update");
+		return 1;
+	}
+	else {
+		debug("no need to update");
+ 		return 0;
+	} 
+>>>>>>> marios:exe1/helpcode-lunix-tng-20130319/lunix-chrdev.c
 }
 
 /*
@@ -61,6 +76,7 @@ static int lunix_chrdev_state_needs_refresh(struct lunix_chrdev_state_struct *st
  */
 static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 {
+<<<<<<< HEAD:helpcode-lunix-tng-20130319/lunix-chrdev.c
       struct lunix_sensor_struct *sensor;
       uint32_t value;         
       long dec,aker,value1;
@@ -114,6 +130,65 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 	 */
 
 	debug("leaving\n");
+=======
+	if (!lunix_chrdev_state_needs_refresh(state))
+		return  -EAGAIN;
+	
+	struct lunix_sensor_struct *sensor;
+
+	debug("updating\n");
+
+	sensor = state->sensor;
+	/*check if update needed*/
+	
+	unsigned long flags;		
+	/*dictionaries for each measurement*/	
+	long * dictionary[N_LUNIX_MSR];
+	dictionary[BATT] = lookup_voltage;
+	dictionary[TEMP] = lookup_temperature;
+	dictionary[LIGHT] = lookup_light;
+
+	uint32_t value;
+	
+	spin_lock_irqsave(&sensor->lock,flags);
+	//spin_lock(&sensor->lock);
+	/*start of critical segment*/
+	value = sensor->msr_data[state->type]->values[0];
+	
+	/*end of critical segment*/
+	//spin_unlock(&sensor->lock);
+	spin_unlock_irqrestore(&sensor->lock,flags);
+	debug("before formation\n");
+	/*formation*/	
+	long long_value = dictionary[state->type][value];
+	
+	int ak = long_value / 1000;
+	int dec = long_value % 1000;
+
+	state->buf_lim=sprintf(state->buf_data,"%d.%d\n",ak,dec);
+        debug("DOULEPSE, %s\n",state->buf_data);
+	state->buf_timestamp = get_seconds();
+		/*
+		 * Grab the raw data quickly, hold the
+		 * spinlock for as little as possible.
+		 */
+		/* ? */
+		/* Why use spinlocks? See LDD3, p. 119 */
+
+		/*
+		 * Any new data available?
+		 */
+		/* ? */
+
+		/*
+		 * Now we can take our time to format them,
+		 * holding only the private state semaphore
+		 */
+
+		/* ? */
+
+		debug("leaving\n");
+>>>>>>> marios:exe1/helpcode-lunix-tng-20130319/lunix-chrdev.c
 	return 0;
 
 out: 
@@ -143,12 +218,22 @@ static int lunix_chrdev_open(struct inode *inode, struct file *filp)
 	 */
 	
 	/* Allocate a new Lunix character device private state structure */
+<<<<<<< HEAD:helpcode-lunix-tng-20130319/lunix-chrdev.c
 
 	//struct lunix_chrdev_state_struct * state;   Declaration
         state =  vmalloc(sizeof(struct lunix_chrdev_state_struct));
 	state->sensor = lunix_sensors+iminor(inode); // connect with a sensor
         sema_init(&state->lock,1);	
 	switch (iminor(inode)%LUNIX_SENSOR_CNT) { // set the type
+=======
+	/* ? */
+	struct lunix_chrdev_state_struct * state =  vmalloc(sizeof(struct lunix_chrdev_state_struct));
+	state->sensor = lunix_sensors+iminor(inode)/8; // connect with a sensor
+	
+	debug("the sensor is %d\n",iminor(inode)/8);
+	debug("the mesurement is %d\n",iminor(inode)%8);	
+	switch (iminor(inode)%8) { // set the type
+>>>>>>> marios:exe1/helpcode-lunix-tng-20130319/lunix-chrdev.c
 	
 	case 0:
 		state->type = BATT;
@@ -162,9 +247,13 @@ static int lunix_chrdev_open(struct inode *inode, struct file *filp)
 
 	}
 	
+<<<<<<< HEAD:helpcode-lunix-tng-20130319/lunix-chrdev.c
 	state->buf_timestamp =0; // set the timestamp for the first time
+=======
+	state->buf_timestamp = 0; // set the timestamp for the first time
+	sema_init(&state->lock,1); //initialize the semaphore
+>>>>>>> marios:exe1/helpcode-lunix-tng-20130319/lunix-chrdev.c
 	filp->private_data=state;
-	debug("the minor is %d\n", iminor(inode));
 	ret = 0;
 out:
 	debug("leaving, with ret = %d\n", ret);
@@ -173,7 +262,14 @@ out:
 
 static int lunix_chrdev_release(struct inode *inode, struct file *filp)
 {
-	/* ? */
+	
+	struct lunix_chrdev_state_struct *state;
+
+	state = filp->private_data;
+	if (state == NULL)
+		debug("in release null");
+	else debug("in release not NULL");
+	vfree(state);
 	return 0;
 }
 
@@ -206,6 +302,7 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 	 * updated by actual sensor data (i.e. we need to report
 	 * on a "fresh" measurement, do so
 	 */
+<<<<<<< HEAD:helpcode-lunix-tng-20130319/lunix-chrdev.c
 
 	if (*f_pos == 0) {
 		while (lunix_chrdev_state_update(state) == -EAGAIN) {
@@ -213,10 +310,38 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
 			 if(wait_event_interruptible(sensor->wq,lunix_chrdev_state_needs_refresh(state))) 
                              return -ERESTARTSYS ;                       
                        	/* The process needs to sleep */
+=======
+	/*lock the semaphore*/
+	if (down_interruptible(&state->lock))
+ 		return -ERESTARTSYS;
+	/*read now*/
+	if (*f_pos == 0) {
+		while (lunix_chrdev_state_update(state) == -EAGAIN) { // EAGAIN = try again
+			/* ? */
+			/* The process needs to sleep */
+>>>>>>> marios:exe1/helpcode-lunix-tng-20130319/lunix-chrdev.c
 			/* See LDD3, page 153 for a hint */
+			if (wait_event_interruptible(sensor->wq,lunix_chrdev_state_needs_refresh(state)))
+            			return -ERESTARTSYS;
 		}
 	}
+	debug("before copying");
+	int char_no = *f_pos / sizeof(unsigned char);
+	if (cnt>(state->buf_lim-char_no)*sizeof(unsigned char))
+		cnt = (state->buf_lim - char_no)*sizeof(unsigned char);
+	
+	char * temp = state->buf_data;
+	if (copy_to_user(usrbuf,temp+char_no,cnt)) {
+		ret = -EFAULT;
+		goto out;
+	}
+	
+	*f_pos = *f_pos + cnt;	
+	if ((cnt/sizeof(unsigned char) + char_no) == state->buf_lim)
+		*f_pos = 0;
 
+	
+	ret = cnt; //need to return how much I've read
 	/* End of file */
 	/* ? */
 	
@@ -235,7 +360,14 @@ static ssize_t lunix_chrdev_read(struct file *filp, char __user *usrbuf, size_t 
         return ret;
     
 out:
+<<<<<<< HEAD:helpcode-lunix-tng-20130319/lunix-chrdev.c
 	up(&state->lock);     /* Unlock */    // prepei na upar3ei sigoura ki ena unlock parapanw e3w apo to out.
+=======
+	/* Unlock? */
+	debug("up the semaphore");
+	up(&state->lock);
+
+>>>>>>> marios:exe1/helpcode-lunix-tng-20130319/lunix-chrdev.c
 	return ret;
 }
 

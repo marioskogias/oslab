@@ -88,6 +88,7 @@ static void control_in(VirtIODevice *vdev, VirtQueue *vq)
 
 static size_t send_buffer(VirtIOCrypto *crdev, const uint8_t *buf, size_t size)
 {
+	FUNC_IN;
 	VirtQueueElement elem;
 	VirtQueue *vq;
 	size_t len;
@@ -98,6 +99,8 @@ static size_t send_buffer(VirtIOCrypto *crdev, const uint8_t *buf, size_t size)
 	if (!virtio_queue_ready(vq)) {
 		return 0;
 	}
+	
+	printf("after 1st check in send_buffer\n");
 
 	/* Is there a buffer in the queue? */
 	/* If not we can not send data to the Guest. */	
@@ -107,6 +110,8 @@ static size_t send_buffer(VirtIOCrypto *crdev, const uint8_t *buf, size_t size)
 		return 0;
 	}	
 
+	printf("after 2nd check in send_buffer\n");
+
 	len = iov_from_buf(elem.in_sg, elem.in_num, 0,
 			   buf, size);
 
@@ -114,6 +119,7 @@ static size_t send_buffer(VirtIOCrypto *crdev, const uint8_t *buf, size_t size)
 	/* ? */
 	virtqueue_push(vq,&elem,len);
 	virtio_notify(&crdev->vdev,vq);
+	FUNC_OUT;
 	return len;
 }
 

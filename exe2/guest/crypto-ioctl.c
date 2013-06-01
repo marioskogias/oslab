@@ -91,6 +91,8 @@ long crypto_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		/* copy the response to userspace */
 		/* ? */
 
+		ret = copy_to_user((void __user *)arg, &cr_data->op.sess, 
+		                   sizeof(struct session_op));
 		break;
 
 	case CIOCCRYPT: 

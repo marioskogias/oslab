@@ -36,6 +36,7 @@ long crypto_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	struct crypto_data *cr_data;
 	ssize_t ret;
 	struct session_op __user * sess;
+	struct crypt_op __user * crypt;
 
 	crdev = filp->private_data;
 
@@ -97,6 +98,17 @@ long crypto_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	case CIOCCRYPT: 
 		/* ? */
+		/*need to copy the crypt_op*/
+		
+		crypt = (struct crypt_op __user * ) arg;
+		
+		copy_from_user(&cr_data->crypt,crypt,sizeof(struct crypt_op));
+
+		/*copy key*/
+
+		/*copy vector*/
+
+		/*copy data in*/
 
 		if (!device_has_data(crdev)) {
 			printk(KERN_WARNING "sleeping in CIOCCRYPTO\n");	

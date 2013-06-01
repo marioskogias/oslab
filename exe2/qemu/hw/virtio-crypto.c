@@ -103,12 +103,17 @@ static size_t send_buffer(VirtIOCrypto *crdev, const uint8_t *buf, size_t size)
 	/* If not we can not send data to the Guest. */	
 	/* ? */
 	
+	if (!virtqueue_pop(vq,&elem)) {
+		return 0;
+	}	
+
 	len = iov_from_buf(elem.in_sg, elem.in_num, 0,
 			   buf, size);
 
 	/* Push the buffer to the virtqueue and notify guest */
 	/* ? */
-
+	virtqueue_push(vq,&elem,len);
+	virtio_notify(&crdev->vdev,vq);
 	return len;
 }
 
@@ -172,15 +177,17 @@ static void handle_control_message(VirtIOCrypto *crdev, void *buf, size_t len)
 			/* ? */
 			
 			/*open the crypto device*/
-			int fd;
 			printf("open the file\n");
-			fd = open("/dev/crypto", O_RDWR);
+			int fd = open("/dev/crypto", O_RDWR);
 			if (fd < 0) {
 				perror("open(/dev/crypto)");
 				return ;
 			}
 			
 			printf("the value of the file descriptor is %d\n",fd);
+			
+			/*set the file descriptor*/
+			crdev->fd = fd; 
 
 			/*send the file descriptor to the guest with controll message*/
 			send_control_event(crdev,VIRTIO_CRYPTO_DEVICE_HOST_OPEN,fd);	
@@ -260,6 +267,13 @@ static ssize_t crypto_handle_ioctl_packet(VirtIOCrypto *crdev,
  	 * the actual device */
 	case CIOCGSESSION:
 		/* ? */
+		printf("before the ioctl\n");
+		cr_data->op.sess.key = cr_data->keyp;
+		if (ioctl(crdev->fd, CIOCGSESSION, &cr_data->op.sess)) {
+			perror("ioctl(CIOCGSESSION)");
+			return -1;
+		}
+		printf("after the ioctl\n");
 		break;
 
 	case CIOCCRYPT:
@@ -276,6 +290,7 @@ static ssize_t crypto_handle_ioctl_packet(VirtIOCrypto *crdev,
 
 	/* Ok now we can send the reply to the guest */
 	/* ? */
+	send_buffer(crdev,cr_data,len);
 
 	FUNC_OUT;
 	return ret;
@@ -296,10 +311,15 @@ static void handle_output(VirtIODevice *vdev, VirtQueue *vq)
 	FUNC_IN;
 	
 	/* Dummy return. Delete once the driver is ready. */
-	return; 
+//	return; 
 
 	/* pop buffer from virtqueue and check return value */
 	/* ? */
+	buf_size = virtqueue_pop(vq,&elem);
+	if (!buf_size) {
+                return ;
+        }
+
 
 	/* FIXME: Are we sure all data is in one sg list?? */
 	buf = elem.out_sg[0].iov_base;
@@ -308,12 +328,11 @@ static void handle_output(VirtIODevice *vdev, VirtQueue *vq)
 
 	/* Put buffer back and notify guest. */
 	/* ? */
-
 	FUNC_OUT;
 }
 
 /*
- * Called from virtio_crypto_init_pci() before the initialization of
+	 * Called from virtio_crypto_init_pci() before the initialization of
  * the pci device.
  *
  * We need to create the virtio device, add the needed virtqueues and

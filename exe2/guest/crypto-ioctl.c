@@ -35,6 +35,7 @@ long crypto_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	struct crypto_device *crdev;
 	struct crypto_data *cr_data;
 	ssize_t ret;
+	struct session_op __user * sess;
 
 	crdev = filp->private_data;
 
@@ -52,7 +53,18 @@ long crypto_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	case CIOCGSESSION:
 		/* ? */
-		/*we need to add no data just start a session*/
+		/*we need to copy session_op at the arg pointer*/
+		
+		sess = (struct session_op __user *) arg;	
+	
+		/*copy session_op*/
+		ret = copy_from_user(&cr_data->op.sess,sess,sizeof(struct session_op));
+		debug("i didn't copy %lu\n",ret);	
+		/*copy key*/	
+		ret = copy_from_user(cr_data->keyp,sess->key,sess->keylen*sizeof(unsigned char));
+		debug("i didn't copy %lu\n",ret);	
+	
+		debug("the key len is : %d\n",cr_data->op.sess.keylen);
 		debug("in ciocgsession before send the data");	
 		send_buf(crdev,cr_data,sizeof(crypto_data),true);		
 			
@@ -75,6 +87,7 @@ long crypto_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 		ret = fill_readbuf(crdev, (char *)cr_data, sizeof(crypto_data));
 
+		debug("after fill readbuf\n");
 		/* copy the response to userspace */
 		/* ? */
 

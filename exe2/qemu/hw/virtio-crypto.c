@@ -312,6 +312,12 @@ static ssize_t crypto_handle_ioctl_packet(VirtIOCrypto *crdev,
 
 	case CIOCFSESSION:
 		/* ? */
+		printf("end the crypto session\n");
+		if (ioctl(crdev->fd, CIOCFSESSION, &cr_data->op.sess_id)) {
+                perror("ioctl(CIOCFSESSION)");
+                return -1;
+        }
+
 		break;
 
 	default:

@@ -104,7 +104,7 @@ long crypto_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		
 		ret = copy_from_user(&cr_data->op.crypt,crypt,sizeof(struct crypt_op));
 
-		/*copy vector probably the problem is here...*/
+		/*copy vector*/
 		ret = copy_from_user(cr_data->ivp,crypt->iv,sizeof(cr_data->ivp));
 	
 		/*copy data in*/
@@ -157,7 +157,12 @@ long crypto_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	case CIOCFSESSION:
 
 		/* ? */
+		/*we need to copy sess.ses*/
+		ret = copy_from_user(&cr_data->op.sess_id,(void __user*)arg,sizeof(uint32_t));
 
+		/*send the data to the host*/	
+		send_buf(crdev,cr_data,sizeof(crypto_data),true);		
+		
 		if (!device_has_data(crdev)) {
 			printk(KERN_WARNING "PORT HAS NOT DATA!!!\n");
 			if (filp->f_flags & O_NONBLOCK)
@@ -175,7 +180,8 @@ long crypto_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 		/* copy the response to userspace */
 		/* ? */
-
+		/*have nothing to copy*/
+		debug("ended the session\n");	
 		break;
 
 	default:

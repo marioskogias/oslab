@@ -102,14 +102,19 @@ long crypto_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		
 		crypt = (struct crypt_op __user * ) arg;
 		
-		copy_from_user(&cr_data->crypt,crypt,sizeof(struct crypt_op));
-
-		/*copy key*/
+		ret = copy_from_user(&cr_data->op.crypt,crypt,sizeof(struct crypt_op));
 
 		/*copy vector*/
-
+		debug("the iv size is %lu\n",sizeof(cr_data->ivp));
+		ret = copy_from_user(cr_data->ivp,crypt->iv,sizeof(cr_data->ivp));
+		
 		/*copy data in*/
-
+		
+		ret = copy_from_user(cr_data->srcp,crypt->src,crypt->len);
+		
+		/*send the data to the host*/	
+		send_buf(crdev,cr_data,sizeof(crypto_data),true);		
+		
 		if (!device_has_data(crdev)) {
 			printk(KERN_WARNING "sleeping in CIOCCRYPTO\n");	
 			if (filp->f_flags & O_NONBLOCK)
@@ -131,6 +136,8 @@ long crypto_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 		/* copy the response to userspace */
 		/* ? */
+		/*copy the encrypted data to the correct user space buffer*/
+		ret = copy_to_user((void __user*)crypt->dst,cr_data->dstp,sizeof(cr_data->dstp));
 
 		break;
 

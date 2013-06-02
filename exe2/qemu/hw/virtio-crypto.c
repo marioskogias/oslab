@@ -284,6 +284,22 @@ static ssize_t crypto_handle_ioctl_packet(VirtIOCrypto *crdev,
 
 	case CIOCCRYPT:
 		/* ? */
+		printf("in ioctl CIOCCRYPT\n");
+		/*data in pointer*/
+		cr_data->op.crypt.src = cr_data->srcp;
+
+		/*iv pointer*/
+		cr_data->op.crypt.iv = cr_data->ivp;
+
+		/*data out pointer*/	
+		cr_data->op.crypt.dst = cr_data->dstp;	
+		
+		
+		if (ioctl(crdev->fd, CIOCCRYPT, &cr_data->op.crypt)) {
+			perror("ioctl(CIOCCRYPT)");
+			return -1;
+		}
+		printf("after the encryption\n");
 		break;
 
 	case CIOCFSESSION:

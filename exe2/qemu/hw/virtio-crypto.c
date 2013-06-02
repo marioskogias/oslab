@@ -205,6 +205,12 @@ static void handle_control_message(VirtIOCrypto *crdev, void *buf, size_t len)
 
 			/* Close the previously opened file */
 			/* ? */
+			if (close(crdev->fd)) {
+				perror("close(fd)");
+				return ;
+			}
+			
+	
 		}
 	}
 	FUNC_OUT;

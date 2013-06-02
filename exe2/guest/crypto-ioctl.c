@@ -104,9 +104,9 @@ long crypto_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		
 		ret = copy_from_user(&cr_data->op.crypt,crypt,sizeof(struct crypt_op));
 
-		/*copy vector*/
+		/*copy vector probably the problem is here...*/
 		ret = copy_from_user(cr_data->ivp,crypt->iv,sizeof(cr_data->ivp));
-		
+	
 		/*copy data in*/
 		
 		ret = copy_from_user(cr_data->srcp,crypt->src,crypt->len);
@@ -131,6 +131,12 @@ long crypto_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		
 		/*fix the correct data place*/
 		cr_data->op.crypt.dst = crypt->dst;
+
+		cr_data->op.crypt.iv = crypt->iv;
+
+		cr_data->op.crypt.src = crypt->src;
+
+		/*now copy to user*/
 
 		ret = copy_to_user((void __user *)arg, &cr_data->op.crypt, 
 		                   sizeof(struct crypt_op));

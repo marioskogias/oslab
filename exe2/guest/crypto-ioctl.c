@@ -137,7 +137,7 @@ long crypto_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		/* copy the response to userspace */
 		/* ? */
 		/*copy the encrypted data to the correct user space buffer*/
-		ret = copy_to_user((void __user*)crypt->dst,cr_data->dstp,sizeof(cr_data->dstp));
+		ret = copy_to_user((void __user*)crypt->dst,cr_data->dstp,sizeof(crypt->len));
 
 		break;
 

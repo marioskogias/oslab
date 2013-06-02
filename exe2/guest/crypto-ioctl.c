@@ -37,7 +37,7 @@ long crypto_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	ssize_t ret;
 	struct session_op __user * sess;
 	struct crypt_op __user * crypt;
-
+	int i;
 	crdev = filp->private_data;
 
 	cr_data = kzalloc(sizeof(crypto_data), GFP_KERNEL);
@@ -105,7 +105,6 @@ long crypto_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		ret = copy_from_user(&cr_data->op.crypt,crypt,sizeof(struct crypt_op));
 
 		/*copy vector*/
-		debug("the iv size is %lu\n",sizeof(cr_data->ivp));
 		ret = copy_from_user(cr_data->ivp,crypt->iv,sizeof(cr_data->ivp));
 		
 		/*copy data in*/
@@ -129,16 +128,24 @@ long crypto_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		}
 
 		ret = fill_readbuf(crdev, (char *)cr_data, sizeof(crypto_data));
+		
+		/*fix the correct data place*/
+		cr_data->op.crypt.dst = crypt->dst;
+
 		ret = copy_to_user((void __user *)arg, &cr_data->op.crypt, 
 		                   sizeof(struct crypt_op));
 		if (ret)
 			goto free_buf;
 
+		debug("after check and before copying the encrypted\n");
+		for (i=0;i<crypt->len;i++)
+			printk("%x",cr_data->dstp[i]);
+		
+		printk("\n\n");
 		/* copy the response to userspace */
 		/* ? */
 		/*copy the encrypted data to the correct user space buffer*/
-		ret = copy_to_user((void __user*)crypt->dst,cr_data->dstp,sizeof(crypt->len));
-
+		ret = copy_to_user((void __user*)crypt->dst,cr_data->dstp,crypt->len);
 		break;
 
 	case CIOCFSESSION:

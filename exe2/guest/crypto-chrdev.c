@@ -81,6 +81,7 @@ static int crypto_chrdev_open(struct inode *inode, struct file *filp)
 		                  minor);
 		goto out;
 	}
+	
 
 	/* Only one process can open a specific device at a time. */
 	/* FIXME: what about lock here? */

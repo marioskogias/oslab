@@ -65,6 +65,7 @@ static int crypto_chrdev_open(struct inode *inode, struct file *filp)
 	unsigned int minor;
 	struct crypto_device *crdev;
 	bool nonblock = filp->f_flags & O_NONBLOCK;
+	unsigned long flags;
 
 	debug("entering\n");
 	ret = -ENODEV;
@@ -83,11 +84,15 @@ static int crypto_chrdev_open(struct inode *inode, struct file *filp)
 
 	/* Only one process can open a specific device at a time. */
 	/* FIXME: what about lock here? */
+	/*lock - get_crypto_dev_by_minor*/
+	spin_lock_irqsave(&crdrvdata_lock, flags);
 	if (crdev->fd >= 0) {
 		debug("Too many open files. fd=%d\n", crdev->fd);
 		ret = -EMFILE;
+		spin_unlock_irqrestore(&crdrvdata_lock, flags);
 		goto out;
 	}
+	spin_unlock_irqrestore(&crdrvdata_lock, flags);
 
 	crdev->fd = -13;
 	filp->private_data = crdev;

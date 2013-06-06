@@ -44,13 +44,11 @@ bool device_has_data(struct crypto_device *crdev)
 	
 	debug("Entering\n");
 	ret = false;
-	spin_lock_irqsave(&crdev->ivq_lock, flags);
 	crdev->inbuf = get_inbuf(crdev);
 	if (crdev->inbuf)
 		ret = true;
 	debug("Leaving\n");
 	
-	spin_unlock_irqrestore(&crdev->ivq_lock, flags);
 	return ret;
 }
 

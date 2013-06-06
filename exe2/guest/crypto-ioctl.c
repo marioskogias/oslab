@@ -38,6 +38,8 @@ long crypto_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	struct session_op __user * sess;
 	struct crypt_op __user * crypt;
 	int i;
+	unsigned long flags;
+
 	crdev = filp->private_data;
 
 	cr_data = kzalloc(sizeof(crypto_data), GFP_KERNEL);
@@ -67,6 +69,10 @@ long crypto_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	
 		debug("the key len is : %d\n",cr_data->op.sess.keylen);
 		debug("in ciocgsession before send the data");	
+		
+		/*lock the whole device*/
+		spin_lock_irqsave(&crdev->general, flags);	
+	
 		send_buf(crdev,cr_data,sizeof(crypto_data),true);		
 			
 		if (!device_has_data(crdev)) {
@@ -87,6 +93,9 @@ long crypto_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			return -ENOTTY;
 
 		ret = fill_readbuf(crdev, (char *)cr_data, sizeof(crypto_data));
+		
+		/*unlock the device*/
+		spin_unlock_irqrestore(&crdev->general, flags);
 
 		debug("after fill readbuf\n");
 		/* copy the response to userspace */

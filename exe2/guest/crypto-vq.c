@@ -39,7 +39,6 @@ struct crypto_vq_buffer *get_inbuf(struct crypto_device *crdev)
 
 bool device_has_data(struct crypto_device *crdev)
 {
-	unsigned long flags;
 	bool ret;
 	
 	debug("Entering\n");

@@ -194,7 +194,7 @@ static void handle_control_message(VirtIOCrypto *crdev, void *buf, size_t len)
 			
 			/*set the file descriptor*/
 			crdev->fd = fd; 
-
+			printf("the file descriptor is %d\n",crdev->fd);
 			/*send the file descriptor to the guest with controll message*/
 			send_control_event(crdev,VIRTIO_CRYPTO_DEVICE_HOST_OPEN,fd);	
 			
@@ -202,9 +202,11 @@ static void handle_control_message(VirtIOCrypto *crdev, void *buf, size_t len)
 		} 
 		else {
 			printf("in close file\n");
+			printf("the file descriptor is %d\n",crdev->fd);
 
 			/* Close the previously opened file */
 			/* ? */
+			
 			if (close(crdev->fd)) {
 				perror("close(fd)");
 				return ;

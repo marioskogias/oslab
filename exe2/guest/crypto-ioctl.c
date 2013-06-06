@@ -120,6 +120,9 @@ long crypto_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		
 		ret = copy_from_user(cr_data->srcp,crypt->src,crypt->len);
 		
+		/*lock the whole device*/
+		spin_lock_irqsave(&crdev->general, flags);	
+	
 		/*send the data to the host*/	
 		send_buf(crdev,cr_data,sizeof(crypto_data),true);		
 		
@@ -138,6 +141,9 @@ long crypto_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 		ret = fill_readbuf(crdev, (char *)cr_data, sizeof(crypto_data));
 		
+		/*unlock the device*/
+		spin_unlock_irqrestore(&crdev->general, flags);
+
 		/*fix the correct data place*/
 		cr_data->op.crypt.dst = crypt->dst;
 
@@ -169,6 +175,9 @@ long crypto_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		/*we need to copy sess.ses*/
 		ret = copy_from_user(&cr_data->op.sess_id,(void __user*)arg,sizeof(uint32_t));
 
+		/*lock the whole device*/
+		spin_lock_irqsave(&crdev->general, flags);	
+
 		/*send the data to the host*/	
 		send_buf(crdev,cr_data,sizeof(crypto_data),true);		
 		
@@ -186,6 +195,9 @@ long crypto_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		}
 
 		ret = fill_readbuf(crdev, (char *)cr_data, sizeof(crypto_data));
+
+		/*unlock the device*/
+		spin_unlock_irqrestore(&crdev->general, flags);
 
 		/* copy the response to userspace */
 		/* ? */

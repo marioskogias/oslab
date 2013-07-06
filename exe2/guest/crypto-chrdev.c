@@ -86,18 +86,17 @@ static int crypto_chrdev_open(struct inode *inode, struct file *filp)
 	/* Only one process can open a specific device at a time. */
 	/* FIXME: what about lock here? */
 	/*lock - get_crypto_dev_by_minor*/
-	spin_lock_irqsave(&crdrvdata_lock, flags);
 	if (crdev->fd >= 0) {
 		debug("Too many open files. fd=%d\n", crdev->fd);
 		ret = -EMFILE;
-		spin_unlock_irqrestore(&crdrvdata_lock, flags);
 		goto out;
 	}
-	spin_unlock_irqrestore(&crdrvdata_lock, flags);
 
 	crdev->fd = -13;
 	filp->private_data = crdev;
 
+	/*lock the device till we get the fd*/
+	spin_lock_irqsave(&crdrvdata_lock, flags);
 	/* Notify Host that we want to open the file. */
 	cnt = send_control_msg(crdev, VIRTIO_CRYPTO_DEVICE_GUEST_OPEN, 1);
 	
@@ -118,6 +117,8 @@ static int crypto_chrdev_open(struct inode *inode, struct file *filp)
 		                               crypto_device_ready(crdev));
 	}
 
+	/*now that we got the fd unlock the device*/
+	spin_unlock_irqrestore(&crdrvdata_lock, flags);
 	if (crdev->fd < 0) {
 		ret = -ENODEV;
 		goto out;

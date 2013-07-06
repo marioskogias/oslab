@@ -145,9 +145,9 @@ int main(int argv, char ** argc)
 {
         int fd,cr;
 
-        cr = open("/dev/crypto", O_RDWR);
+        cr = open("/dev/cryptodev2", O_RDWR);
         if (cr < 0) {
-                perror("open(/dev/crypto)");
+                perror("open(/dev/cryptodev2)");
                 return 1;
         }
 

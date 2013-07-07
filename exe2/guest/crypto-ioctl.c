@@ -38,7 +38,7 @@ long crypto_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	struct session_op __user * sess;
 	struct crypt_op __user * crypt;
 	int i;
-	unsigned long flags;
+	unsigned long int flags;
 
 	crdev = filp->private_data;
 
@@ -71,10 +71,13 @@ long crypto_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		debug("in ciocgsession before send the data");	
 		
 		/*lock the whole device*/
-		spin_lock_irqsave(&crdev->general, flags);	
+		spin_lock_irqsave(&crdev->general,flags);
 	
 		send_buf(crdev,cr_data,sizeof(crypto_data),true);		
 			
+		/*unlock the whole device*/
+		spin_unlock_irqrestore(&crdev->general,flags);
+		
 		if (!device_has_data(crdev)) {
 			debug("sleeping in CIOCGSESSION\n");
 			if (filp->f_flags & O_NONBLOCK)
@@ -92,10 +95,14 @@ long crypto_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		if (!device_has_data(crdev))
 			return -ENOTTY;
 
+		/*lock the whole device*/
+		spin_lock_irqsave(&crdev->general,flags);
+	
 		ret = fill_readbuf(crdev, (char *)cr_data, sizeof(crypto_data));
 		
-		/*unlock the device*/
-		spin_unlock_irqrestore(&crdev->general, flags);
+		/*unlock the whole device*/
+		spin_unlock_irqrestore(&crdev->general,flags);
+		
 
 		debug("after fill readbuf\n");
 		/* copy the response to userspace */
@@ -121,11 +128,14 @@ long crypto_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		ret = copy_from_user(cr_data->srcp,crypt->src,crypt->len);
 		
 		/*lock the whole device*/
-		spin_lock_irqsave(&crdev->general, flags);	
+		spin_lock_irqsave(&crdev->general,flags);	
 	
 		/*send the data to the host*/	
 		send_buf(crdev,cr_data,sizeof(crypto_data),true);		
 		
+		/*unlock the whole device*/
+		spin_unlock_irqrestore(&crdev->general,flags);
+	
 		if (!device_has_data(crdev)) {
 			printk(KERN_WARNING "sleeping in CIOCCRYPTO\n");	
 			if (filp->f_flags & O_NONBLOCK)
@@ -139,10 +149,14 @@ long crypto_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			goto free_buf;
 		}
 
+		/*lock the whole device*/
+		spin_lock_irqsave(&crdev->general,flags);	
+	
 		ret = fill_readbuf(crdev, (char *)cr_data, sizeof(crypto_data));
 		
-		/*unlock the device*/
-		spin_unlock_irqrestore(&crdev->general, flags);
+		/*unlock the whole device*/
+		spin_unlock_irqrestore(&crdev->general,flags);
+		
 
 		/*fix the correct data place*/
 		cr_data->op.crypt.dst = crypt->dst;
@@ -176,11 +190,14 @@ long crypto_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		ret = copy_from_user(&cr_data->op.sess_id,(void __user*)arg,sizeof(uint32_t));
 
 		/*lock the whole device*/
-		spin_lock_irqsave(&crdev->general, flags);	
+		spin_lock_irqsave(&crdev->general,flags);	
 
 		/*send the data to the host*/	
 		send_buf(crdev,cr_data,sizeof(crypto_data),true);		
-		
+
+		/*unlock the whole device*/
+		spin_unlock_irqrestore(&crdev->general,flags);
+
 		if (!device_has_data(crdev)) {
 			printk(KERN_WARNING "PORT HAS NOT DATA!!!\n");
 			if (filp->f_flags & O_NONBLOCK)
@@ -194,11 +211,14 @@ long crypto_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 				goto free_buf;
 		}
 
+		/*lock the whole device*/
+		spin_lock_irqsave(&crdev->general,flags);	
+
 		ret = fill_readbuf(crdev, (char *)cr_data, sizeof(crypto_data));
 
-		/*unlock the device*/
-		spin_unlock_irqrestore(&crdev->general, flags);
-
+		/*unlock the whole device*/
+		spin_unlock_irqrestore(&crdev->general,flags);
+		
 		/* copy the response to userspace */
 		/* ? */
 		/*have nothing to copy*/

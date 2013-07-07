@@ -71,7 +71,6 @@ struct crypto_device {
 	struct crypto_vq_buffer *inbuf;
 
 	/* FIXME: Do we need any lock? */
-	/*lock for the ivq*/
 	spinlock_t general;
 };
 

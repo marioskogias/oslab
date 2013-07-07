@@ -14,7 +14,6 @@
 #include <linux/sched.h>
 #include <linux/module.h>
 #include <linux/wait.h>
-
 #include "crypto-chrdev.h"
 #include "crypto-vq.h"
 #include "crypto-ioctl.h"
@@ -23,6 +22,7 @@
  * Global data
  */
 struct cdev crypto_chrdev_cdev;
+
 
 /*
  * Given the minor number of the inode return the crypto device 
@@ -82,7 +82,8 @@ static int crypto_chrdev_open(struct inode *inode, struct file *filp)
 		goto out;
 	}
 	
-
+	
+	spin_lock_init(&crdev->general);
 	/* Only one process can open a specific device at a time. */
 	/* FIXME: what about lock here? */
 	/*lock - get_crypto_dev_by_minor*/

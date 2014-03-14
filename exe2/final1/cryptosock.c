@@ -1,4 +1,5 @@
-/* 
+/* test_crypto.c
+ * 
  * Performs a simple encryption-decryption 
  * of random data from /dev/urandom with the 
  * use of the cryptodev device.
@@ -32,13 +33,13 @@
 #define BLOCK_SIZE      16
 #define KEY_SIZE        16  /* AES128 */
 
-#define TCP_PORT    35001
 #define TCP_BACKLOG 5
 
 
 unsigned char res[DATA_SIZE];
 unsigned char key[KEY_SIZE];
 unsigned char iv[BLOCK_SIZE];
+
 /* Insist until all of the data has been read */
 ssize_t insist_read(int fd, void *buf, size_t cnt)
 {
@@ -102,7 +103,7 @@ void init(int cfd,struct session_op * sess,unsigned char * key) {
                 exit(1);
         }
 }
-static int test_crypto(int cfd,unsigned char * p,int size,struct session_op * sess, struct crypt_op * cryp)
+static int test_crypto(int cfd, unsigned char * p,int size,struct session_op * sess, struct crypt_op * cryp)
 {
         int i = -1;
         struct {
@@ -114,17 +115,20 @@ static int test_crypto(int cfd,unsigned char * p,int size,struct session_op * se
         } data;
 
 
+
+        memset(&data,0,sizeof(data));
         memset(cryp, 0, sizeof(*cryp));
         memset(data.in,0,sizeof(data.in));
-        memcpy(data.in,p,size);
-
-
-        cryp->iv = iv;
+        memcpy(data.in,p,DATA_SIZE);
+        /*
+         * Encrypt data.in to data.encrypted
+         */
         cryp->ses = sess->ses;
-        cryp->src = data.in;
-        cryp->dst = data.decrypted;
-        cryp->op = COP_DECRYPT;
         cryp->len = sizeof(data.in);
+        cryp->src = data.in;
+        cryp->dst = data.encrypted;
+        cryp->iv = iv;
+        cryp->op = COP_ENCRYPT;
 
         if (ioctl(cfd, CIOCCRYPT, cryp)) {
                 perror("ioctl(CIOCCRYPT)");
@@ -132,9 +136,8 @@ static int test_crypto(int cfd,unsigned char * p,int size,struct session_op * se
         }
 
 
-        memcpy(res,data.decrypted,DATA_SIZE);
-        for(i=0;i<DATA_SIZE;i++)
-                printf("%c",res[i]);
+        memcpy(res,data.encrypted,DATA_SIZE);
+
         return 0;
 }
 
@@ -142,9 +145,9 @@ int main(int argv, char ** argc)
 {
         int fd,cr;
 
-        cr = open("/dev/crypto", O_RDWR);
+        cr = open("/dev/cryptodev0", O_RDWR);
         if (cr < 0) {
-                perror("open(/dev/crypto)");
+                perror("open(/dev/cryptodev0)");
                 return 1;
         }
 
@@ -152,13 +155,12 @@ int main(int argv, char ** argc)
         struct session_op sess;
         struct crypt_op cryp;
 
-
         memset(key,0,sizeof(key));
-    //    fprintf(stdout,"Give the key\n");
-      //  read(0,key,sizeof(key));
-       // fprintf(stdout,"Give the iv\n");
+//      fprintf(stdout,"Give the key\n");
+//      read(0,key,sizeof(key));
+//      fprintf(stdout,"Give the iv\n");
         memset(iv,0,sizeof(iv));
-       // read(0,iv,sizeof(iv));
+//      read(0,iv,sizeof(iv));
         strcpy(key,"marios");
         strcpy(iv,"123");
         init(cr,&sess,key);
@@ -174,12 +176,12 @@ int main(int argv, char ** argc)
                 perror("socket");
                 exit(1);
         }
-	unlink("decrypt.socket");
+	unlink("encrypt.socket");
         fprintf(stderr, "Created Unix socket\n");
 
         memset(&un, 0, sizeof(un));
         un.sun_family = AF_UNIX;
-        strcpy(un.sun_path,"decrypt.socket");
+        strcpy(un.sun_path,"encrypt.socket");
         int size = offsetof(struct sockaddr_un,sun_path) + strlen(un.sun_path) ;
         if (bind(fd, (struct sockaddr *)&un, size) < 0) {
                 perror("bind");
@@ -198,7 +200,8 @@ int main(int argv, char ** argc)
                         perror("accept");
                         exit(1);
                 }
-       unsigned  char buf[DATA_SIZE];
+        unsigned char buf[DATA_SIZE];
+        memset(buf,0,sizeof(buf));
         for (;;) {
 
                 n = read(newsd, buf, sizeof(buf));
@@ -215,6 +218,7 @@ int main(int argv, char ** argc)
                         perror("write to remote peer failed");
                         break;
                 }
+                memset(buf,0,sizeof(buf));
         }
 
         if (ioctl(cr, CIOCFSESSION, &sess.ses)) {
@@ -229,7 +233,6 @@ int main(int argv, char ** argc)
                 perror("close(fd)");
                 return 1;
         }
-
         return 0;
 }
 

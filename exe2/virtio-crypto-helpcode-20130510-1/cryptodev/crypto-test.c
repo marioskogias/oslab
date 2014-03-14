@@ -22,9 +22,9 @@
 
 #include "crypto/cryptodev.h"
 
-#define DATA_SIZE       256
-#define BLOCK_SIZE      16
-#define KEY_SIZE	16  /* AES128 */
+#define DATA_SIZE       1024
+#define BLOCK_SIZE      64
+#define KEY_SIZE	24  /* AES128 */
 
 
 /* Insist until all of the data has been read */

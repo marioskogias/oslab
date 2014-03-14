@@ -151,12 +151,10 @@ static int lunix_chrdev_state_update(struct lunix_chrdev_state_struct *state)
 	uint32_t value;
 	
 	spin_lock_irqsave(&sensor->lock,flags);
-	//spin_lock(&sensor->lock);
 	/*start of critical segment*/
 	value = sensor->msr_data[state->type]->values[0];
 	
 	/*end of critical segment*/
-	//spin_unlock(&sensor->lock);
 	spin_unlock_irqrestore(&sensor->lock,flags);
 	debug("before formation\n");
 	/*formation*/	

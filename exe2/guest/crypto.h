@@ -71,7 +71,7 @@ struct crypto_device {
 	struct crypto_vq_buffer *inbuf;
 
 	/* FIXME: Do we need any lock? */
-	/* ? */
+	spinlock_t general;
 };
 
 /* This struct represents the data that we send for the ioctl(). */

@@ -88,6 +88,7 @@ static void control_in(VirtIODevice *vdev, VirtQueue *vq)
 
 static size_t send_buffer(VirtIOCrypto *crdev, const uint8_t *buf, size_t size)
 {
+	FUNC_IN;
 	VirtQueueElement elem;
 	VirtQueue *vq;
 	size_t len;
@@ -98,17 +99,27 @@ static size_t send_buffer(VirtIOCrypto *crdev, const uint8_t *buf, size_t size)
 	if (!virtio_queue_ready(vq)) {
 		return 0;
 	}
+	
+	printf("after 1st check in send_buffer\n");
 
 	/* Is there a buffer in the queue? */
 	/* If not we can not send data to the Guest. */	
 	/* ? */
 	
+	if (!virtqueue_pop(vq,&elem)) {
+		return 0;
+	}	
+
+	printf("after 2nd check in send_buffer\n");
+
 	len = iov_from_buf(elem.in_sg, elem.in_num, 0,
 			   buf, size);
 
 	/* Push the buffer to the virtqueue and notify guest */
 	/* ? */
-
+	virtqueue_push(vq,&elem,len);
+	virtio_notify(&crdev->vdev,vq);
+	FUNC_OUT;
 	return len;
 }
 
@@ -172,16 +183,18 @@ static void handle_control_message(VirtIOCrypto *crdev, void *buf, size_t len)
 			/* ? */
 			
 			/*open the crypto device*/
-			int fd;
 			printf("open the file\n");
-			fd = open("/dev/crypto", O_RDWR);
+			int fd = open("/dev/crypto", O_RDWR);
 			if (fd < 0) {
 				perror("open(/dev/crypto)");
 				return ;
 			}
 			
 			printf("the value of the file descriptor is %d\n",fd);
-
+			
+			/*set the file descriptor*/
+			crdev->fd = fd; 
+			printf("the file descriptor is %d\n",crdev->fd);
 			/*send the file descriptor to the guest with controll message*/
 			send_control_event(crdev,VIRTIO_CRYPTO_DEVICE_HOST_OPEN,fd);	
 			
@@ -189,9 +202,17 @@ static void handle_control_message(VirtIOCrypto *crdev, void *buf, size_t len)
 		} 
 		else {
 			printf("in close file\n");
+			printf("the file descriptor is %d\n",crdev->fd);
 
 			/* Close the previously opened file */
 			/* ? */
+			
+			if (close(crdev->fd)) {
+				perror("close(fd)");
+				return ;
+			}
+			
+	
 		}
 	}
 	FUNC_OUT;
@@ -260,14 +281,51 @@ static ssize_t crypto_handle_ioctl_packet(VirtIOCrypto *crdev,
  	 * the actual device */
 	case CIOCGSESSION:
 		/* ? */
+		printf("before the ioctl\n");
+		cr_data->op.sess.key = cr_data->keyp;
+		if (ioctl(crdev->fd, CIOCGSESSION, &cr_data->op.sess)) {
+			perror("ioctl(CIOCGSESSION)");
+			return -1;
+		}
+		printf("after the ioctl\n");
 		break;
 
 	case CIOCCRYPT:
 		/* ? */
+		printf("in ioctl CIOCCRYPT\n");
+		/*data in pointer*/
+		cr_data->op.crypt.src = cr_data->srcp;
+
+		/*iv pointer*/
+		cr_data->op.crypt.iv = cr_data->ivp;
+
+		/*data out pointer*/	
+		cr_data->op.crypt.dst = cr_data->dstp;	
+		
+		int i;
+		printf("the data to encrypt is \n");	
+		for (i=0;i<CRYPTO_DATA_MAX_LEN;i++)
+			printf("%x",cr_data->srcp[i]);
+		printf("\n\n");
+	
+		if (ioctl(crdev->fd, CIOCCRYPT, &cr_data->op.crypt)) {
+			perror("ioctl(CIOCCRYPT)");
+			return -1;
+		}
+		printf("after the encryption\n");
+		for (i=0;i<CRYPTO_DATA_MAX_LEN;i++)
+			printf("%x",cr_data->dstp[i]);
+		printf("\n\n");
 		break;
 
 	case CIOCFSESSION:
 		/* ? */
+		printf("end the crypto session\n");
+		if (ioctl(crdev->fd, CIOCFSESSION, &cr_data->op.sess_id)) {
+                perror("ioctl(CIOCFSESSION)");
+                return -1;
+        }
+
 		break;
 
 	default:
@@ -276,6 +334,7 @@ static ssize_t crypto_handle_ioctl_packet(VirtIOCrypto *crdev,
 
 	/* Ok now we can send the reply to the guest */
 	/* ? */
+	send_buffer(crdev,cr_data,len);
 
 	FUNC_OUT;
 	return ret;
@@ -296,10 +355,15 @@ static void handle_output(VirtIODevice *vdev, VirtQueue *vq)
 	FUNC_IN;
 	
 	/* Dummy return. Delete once the driver is ready. */
-	return; 
+//	return; 
 
 	/* pop buffer from virtqueue and check return value */
 	/* ? */
+	buf_size = virtqueue_pop(vq,&elem);
+	if (!buf_size) {
+                return ;
+        }
+
 
 	/* FIXME: Are we sure all data is in one sg list?? */
 	buf = elem.out_sg[0].iov_base;
@@ -308,12 +372,11 @@ static void handle_output(VirtIODevice *vdev, VirtQueue *vq)
 
 	/* Put buffer back and notify guest. */
 	/* ? */
-
 	FUNC_OUT;
 }
 
 /*
- * Called from virtio_crypto_init_pci() before the initialization of
+	 * Called from virtio_crypto_init_pci() before the initialization of
  * the pci device.
  *
  * We need to create the virtio device, add the needed virtqueues and

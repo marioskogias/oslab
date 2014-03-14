@@ -39,18 +39,15 @@ struct crypto_vq_buffer *get_inbuf(struct crypto_device *crdev)
 
 bool device_has_data(struct crypto_device *crdev)
 {
-	//unsigned long flags;
 	bool ret;
 	
 	debug("Entering\n");
 	ret = false;
-	//spin_lock_irqsave(&port->inbuf_lock, flags);
 	crdev->inbuf = get_inbuf(crdev);
 	if (crdev->inbuf)
 		ret = true;
 	debug("Leaving\n");
 	
-	//spin_unlock_irqrestore(&port->inbuf_lock, flags);
 	return ret;
 }
 
@@ -79,6 +76,7 @@ ssize_t fill_readbuf(struct crypto_device *crdev, char *out_buf,
 		/*
 		 * FIXME: We're done using all the data in this buffer.
 		 * Re-queue so that the Host can send us more data.
+		 * what to fix???
 		 */
 		crdev->inbuf = NULL;
 
@@ -153,7 +151,8 @@ ssize_t send_buf(struct crypto_device *crdev, void *in_buf, size_t in_count,
 	
 	/* add sg list to virtqueue and notify host */
 	/* ? */
-	if (virtqueue_add_buf(out_vq, sg, 1, 0, in_buf) >= 0) 
+	ret = virtqueue_add_buf(out_vq, sg, 1, 0, in_buf);
+	if ( ret >= 0) 
 		virtqueue_kick(out_vq);
 
 	if (ret < 0) {

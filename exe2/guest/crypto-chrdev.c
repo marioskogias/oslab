@@ -14,7 +14,6 @@
 #include <linux/sched.h>
 #include <linux/module.h>
 #include <linux/wait.h>
-
 #include "crypto-chrdev.h"
 #include "crypto-vq.h"
 #include "crypto-ioctl.h"
@@ -23,6 +22,7 @@
  * Global data
  */
 struct cdev crypto_chrdev_cdev;
+
 
 /*
  * Given the minor number of the inode return the crypto device 
@@ -65,6 +65,7 @@ static int crypto_chrdev_open(struct inode *inode, struct file *filp)
 	unsigned int minor;
 	struct crypto_device *crdev;
 	bool nonblock = filp->f_flags & O_NONBLOCK;
+	unsigned long flags;
 
 	debug("entering\n");
 	ret = -ENODEV;
@@ -80,9 +81,12 @@ static int crypto_chrdev_open(struct inode *inode, struct file *filp)
 		                  minor);
 		goto out;
 	}
-
+	
+	
+	spin_lock_init(&crdev->general);
 	/* Only one process can open a specific device at a time. */
 	/* FIXME: what about lock here? */
+	/*lock - get_crypto_dev_by_minor*/
 	if (crdev->fd >= 0) {
 		debug("Too many open files. fd=%d\n", crdev->fd);
 		ret = -EMFILE;
@@ -92,14 +96,13 @@ static int crypto_chrdev_open(struct inode *inode, struct file *filp)
 	crdev->fd = -13;
 	filp->private_data = crdev;
 
+	/*lock the device till we send the signal*/
+	spin_lock_irqsave(&crdrvdata_lock, flags);
 	/* Notify Host that we want to open the file. */
 	cnt = send_control_msg(crdev, VIRTIO_CRYPTO_DEVICE_GUEST_OPEN, 1);
+	/*now that we sent the message unlock the device*/
+	spin_unlock_irqrestore(&crdrvdata_lock, flags);
 	
-	/*
-	 * We don't expect reply from Host yet. Just leave. 
-	 * Delete when Host replies back to us. 
-	 */
-//	goto out;
 
 	/* Sleep here until we get the fd from the Host. */
 	if (!crypto_device_ready(crdev)) {
